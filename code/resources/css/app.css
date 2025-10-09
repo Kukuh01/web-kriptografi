@@ -1,5 +1,6 @@
-@import 'tailwindcss';
 @import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap");
+
+@import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -10,7 +11,35 @@
     /* custom font */
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-montserrat: "Montserrat", sans-serif;
-  --font-jakarta: "Plus Jakarta Sans", sans-serif;
+    --font-montserrat: "Montserrat", sans-serif;
+    --font-jakarta: "Plus Jakarta Sans", sans-serif;
+}
 
+h1 {
+  font-size: 57.8px;
+  font-weight: 700; /* bold */
+}
+
+h2 {
+  font-size: 44.6px;
+  font-weight: 600; /* semibold */
+}
+
+h3 {
+  font-size: 34.3px;
+  font-weight: 500; /* medium */
+}
+
+h4 {
+  font-size: 26.4px;
+  font-weight: 600; /* semibold */
+}
+
+h5 {
+  font-size: 20.34px;
+  font-weight: 400; /* normal (default) */
+}
+
+h6 {
+  font-size: 15.6px;
 }
