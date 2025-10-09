@@ -5,7 +5,7 @@ use App\Http\Controllers\DecryptController;
 use App\Http\Controllers\EncryptController;
 
 Route::get('/', function () {
-    return view('home');
+    return view('pages.home');
 });
 
 Route::post('/encrypt', [EncryptController::class, 'encrypt']);
