@@ -1,7 +1,9 @@
 <x-layout>
     <x-slot:title>
-        Homepag
+        Homepage
     </x-slot:title>
+
+    <x-hero/>
 
     <div class="bg-white p-6 rounded-lg shadow-md">
         <h1 class="text-3xl font-bold mb-8">🔒 CryptImage - Enkripsi Gambar ChaCha20</h1>
