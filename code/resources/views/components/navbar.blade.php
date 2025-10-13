@@ -5,6 +5,7 @@
         </a>
         <div class="space-x-4">
             <a href="/" class="text-gray-200 hover:text-white">Home</a>
+            <a href="/" class="text-gray-200 hover:text-white">Encryption</a>
             <a href="/about" class="text-gray-200 hover:text-white">About</a>
             <a href="/contact" class="text-gray-200 hover:text-white">Contact</a>
         </div>
