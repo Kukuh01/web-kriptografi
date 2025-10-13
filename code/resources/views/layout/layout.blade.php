@@ -14,7 +14,7 @@
     <x-navbar />
 
     {{-- Konten utama halaman akan disisipkan di sini --}}
-    <main class="container mx-auto min-h-screen">
+    <main class="">
         {{ $slot }}
     </main>
 

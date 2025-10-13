@@ -5,21 +5,31 @@
 
     <x-hero/>
 
-    <div class="bg-white p-6 rounded-lg shadow-md">
-        <h1 class="text-3xl font-bold mb-8">🔒 CryptImage - Enkripsi Gambar ChaCha20</h1>
+    <div class="bg-neutral-800 p-6 flex justify-around">
 
-        <div class="space-y-6 w-96">
-            <form id="encryptForm" enctype="multipart/form-data">
-                <label class="block text-sm font-medium">Upload Gambar:</label>
-                <input type="file" name="image" class="file-input w-full" required>
+        <div class="space-y-6 w-md">
+            <div class="bg-gray-400 w-md h-80 rounded-2xl">
+
+            </div>
+            <form class="flex flex-col items-center" id="encryptForm" enctype="multipart/form-data">
+                <label class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-center py-2 rounded cursor-pointer">
+                Pilih File
+                <input type="file" name="file" class="hidden" required>
+                </label>
                 <button class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded w-full mt-3">Enkripsi Gambar</button>
             </form>
+        </div>
+        <div class="space-y-6 w-md">
+            <div class="bg-gray-400 w-md h-80 rounded-2xl">
 
-            <form id="decryptForm" enctype="multipart/form-data">
-                <label class="block text-sm font-medium">Upload File Enkripsi:</label>
-                <input type="file" name="file" class="file-input w-full" required>
+            </div>
+            <form class="flex flex-col items-center" id="decryptForm" enctype="multipart/form-data" >
+                <label class="w-full bg-green-600 hover:bg-green-700 text-white text-center py-2 rounded cursor-pointer">
+                Pilih File
+                <input type="file" name="file" class="hidden" required>
+                </label>
                 <button class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded w-full mt-3">Dekripsi Gambar</button>
-            </form>
+            </form> 
         </div>
 
         <script>
