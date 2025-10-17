@@ -9,13 +9,13 @@
     {{-- Memuat CSS yang sudah dikompilasi oleh Vite --}}
     @vite('resources/css/app.css')
 </head>
-<body class="bg-gray-100 font-sans text-gray-800">
+<body class="bg-gray-100 font-sans text-gray-800 scroll-smooth">
 
     {{-- Memanggil komponen Navbar --}}
     <x-navbar />
 
     {{-- Konten utama halaman akan disisipkan di sini --}}
-    <main class="">
+    <main class="container mx-auto">
         {{ $slot }}
     </main>
 
