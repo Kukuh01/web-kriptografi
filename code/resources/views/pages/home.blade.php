@@ -12,9 +12,10 @@
 
             </div>
             <form class="flex flex-col items-center" id="encryptForm" enctype="multipart/form-data">
+                @csrf
                 <label class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-center py-2 rounded cursor-pointer">
                 Pilih File
-                <input type="file" name="file" class="hidden" required>
+                <input type="file" name="image" class="hidden" required>
                 </label>
                 <button class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded w-full mt-3">Enkripsi Gambar</button>
             </form>
@@ -43,8 +44,7 @@
                     let res = await fetch('/encrypt', {
                         method: 'POST',
                         headers: {
-                            'X-CSRF-TOKEN': csrfToken, // <-- TAMBAHKAN INI
-                            'Accept': 'application/json'
+                            'X-CSRF-TOKEN': csrfToken,
                         },
                         body: form
                     });
@@ -66,8 +66,7 @@
                     let res = await fetch('/decrypt', {
                         method: 'POST',
                         headers: {
-                            'X-CSRF-TOKEN': csrfToken, // <-- TAMBAHKAN INI
-                            'Accept': 'application/json'
+                            'X-CSRF-TOKEN': csrfToken,
                         },
                         body: form
                     });

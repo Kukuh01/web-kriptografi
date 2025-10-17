@@ -34,7 +34,7 @@
                 let res = await fetch('/encrypt', {
                     method: 'POST',
                     headers: {
-                        'X-CSRF-TOKEN': csrfToken, // <-- TAMBAHKAN INI
+                        'X-CSRF-TOKEN': csrfToken,
                         'Accept': 'application/json'
                     },
                     body: form
@@ -57,7 +57,7 @@
                 let res = await fetch('/decrypt', {
                     method: 'POST',
                     headers: {
-                        'X-CSRF-TOKEN': csrfToken, // <-- TAMBAHKAN INI
+                        'X-CSRF-TOKEN': csrfToken,
                         'Accept': 'application/json'
                     },
                     body: form
