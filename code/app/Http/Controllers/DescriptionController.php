@@ -31,6 +31,26 @@ class DescriptionController extends Controller
         return view('descriptions.edit-about', compact('description'));
     }
 
+    public function showContact()
+    {
+        // Ambil deskripsi 'contact'. Jika tidak ada, buat baru.
+        $description = Description::firstOrNew(['key' => 'contact']);
+
+        return view('contact', compact('description'));
+    }
+
+    /**
+     * Menampilkan form edit untuk halaman 'Contact'.
+     */
+    public function editContact()
+    {
+        // Ambil data 'contact', atau buat instance baru
+        $description = Description::firstOrNew(['key' => 'contact']);
+
+        // Kirim data ke view
+        return view('descriptions.edit-contact', compact('description'));
+    }
+
     /**
      * Menyimpan (update atau create) deskripsi.
      */
