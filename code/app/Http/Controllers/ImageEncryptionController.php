@@ -318,6 +318,22 @@ class ImageEncryptionUtils
  */
 class ImageMetrics
 {
+    /**
+     * Fungsi helper untuk menghitung entropi dari satu channel histogram
+     */
+    private static function calculateEntropy($histogram, $totalPixels)
+    {
+        $entropy = 0.0;
+        if ($totalPixels == 0) return 0;
+        
+        for ($i = 0; $i < 256; $i++) {
+            if ($histogram[$i] == 0) continue;
+            $p = $histogram[$i] / $totalPixels;
+            $entropy -= $p * log($p, 2);
+        }
+        return $entropy;
+    }
+
     public static function compareImages($imgA, $imgB)
     {
         $w = imagesx($imgA);
@@ -331,8 +347,8 @@ class ImageMetrics
         $totalPixels = $w * $h;
         $diffCount = 0; // for NPCR
         $uaciSum = 0.0;
-        $hist = array_fill(0, 256, 0); // entropy for encrypted image (we'll use encrypted)
-        $histA = array_fill(0, 256, 0);
+        $histR = array_fill(0, 256, 0);
+        $histG = array_fill(0, 256, 0);
         $histB = array_fill(0, 256, 0);
 
         // For SSIM global: compute means and variances on grayscale
@@ -356,13 +372,13 @@ class ImageMetrics
                 // UACI: average of abs difference per channel normalized
                 $uaciSum += (abs($rA - $rB) + abs($gA - $gB) + abs($bA - $bB)) / 3.0;
 
-                // For histogram / entropy use encrypted image (imgB). Use grayscale value for histogram
-                $grayB = intval(0.299*$rB + 0.587*$gB + 0.114*$bB);
-                $hist[$grayB]++;
+                $histR[$rB]++;
+                $histG[$gB]++;
+                $histB[$bB]++;
 
                 // hist for A and B too
                 $grayA = intval(0.299*$rA + 0.587*$gA + 0.114*$bA);
-                $histA[$grayA]++; $histB[$grayB]++;
+                $grayB = intval(0.299*$rB + 0.587*$gB + 0.114*$bB);
 
                 // SSIM global (grayscale)
                 $sumA += $grayA; $sumB += $grayB;
@@ -379,12 +395,10 @@ class ImageMetrics
         $uaci = ($uaciSum / ($totalPixels * $maxPixel)) * 100.0; // in percent
 
         // Entropy for encrypted image using hist
-        $entropy = 0.0;
-        for ($i = 0; $i < 256; $i++) {
-            if ($hist[$i] == 0) continue;
-            $p = $hist[$i] / $totalPixels;
-            $entropy -= $p * log($p, 2);
-        }
+        $entropyR = self::calculateEntropy($histR, $totalPixels);
+        $entropyG = self::calculateEntropy($histG, $totalPixels);
+        $entropyB = self::calculateEntropy($histB, $totalPixels);
+        $entropy = ($entropyR + $entropyG + $entropyB) / 3.0;
 
         // SSIM global (single-window approximate)
         $N = $totalPixels;

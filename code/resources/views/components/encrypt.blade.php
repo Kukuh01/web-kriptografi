@@ -148,7 +148,7 @@
         }
     });
 
-    //Fungsi untuk menghitung histogram dari gambar
+    //Fungsi untuk menghitung histogram dari gambar (R, G, B)
     function getHistogramData(imgElement) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -157,26 +157,55 @@
         ctx.drawImage(imgElement, 0, 0);
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 
-        const histogram = new Array(256).fill(0);
+        // Buat 3 histogram
+        const histR = new Array(256).fill(0);
+        const histG = new Array(256).fill(0);
+        const histB = new Array(256).fill(0);
+
         for (let i = 0; i < imgData.length; i += 4) {
-            const brightness = Math.round(0.299 * imgData[i] + 0.587 * imgData[i + 1] + 0.114 * imgData[i + 2]);
-            histogram[brightness]++;
+            histR[imgData[i]]++;   // Red
+            histG[imgData[i+1]]++; // Green
+            histB[imgData[i+2]]++; // Blue
+            // imgData[i+3] adalah Alpha, kita abaikan
         }
-        return histogram;
+        // Kembalikan sebagai objek
+        return { r: histR, g: histG, b: histB };
     }
 
-    //Fungsi untuk render chart
-    function renderHistogram(canvasId, histogramData, color, label) {
+    //Fungsi untuk render chart (sekarang menerima 3 dataset)
+    function renderHistogram(canvasId, histogramData, label) {
+        // Hancurkan chart lama jika ada
+        let existingChart = Chart.getChart(canvasId);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+
         const ctx = document.getElementById(canvasId).getContext('2d');
         new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: Array.from({ length: 256 }, (_, i) => i),
-                datasets: [{
-                    label,
-                    data: histogramData,
-                    backgroundColor: color,
-                    borderWidth: 0,
+                datasets: [
+                {
+                    label: `${label} (Red)`,
+                    data: histogramData.r,
+                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                    barPercentage: 1.0,
+                    categoryPercentage: 1.0
+                },
+                {
+                    label: `${label} (Green)`,
+                    data: histogramData.g,
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    barPercentage: 1.0,
+                    categoryPercentage: 1.0
+                },
+                {
+                    label: `${label} (Blue)`,
+                    data: histogramData.b,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    barPercentage: 1.0,
+                    categoryPercentage: 1.0
                 }]
             },
             options: {
@@ -184,15 +213,17 @@
                 scales: {
                     x: {
                         title: { display: true, text: 'Tingkat Intensitas (0–255)' },
-                        ticks: { maxTicksLimit: 16 }
+                        ticks: { maxTicksLimit: 16 },
+                        stacked: true // Tumpuk barnya agar terlihat
                     },
                     y: {
                         title: { display: true, text: 'Frekuensi Piksel' },
-                        beginAtZero: true
+                        beginAtZero: true,
+                        stacked: true // Tumpuk barnya agar terlihat
                     }
                 },
                 plugins: {
-                    legend: { display: false }
+                    legend: { display: true } // Tampilkan legenda R,G,B
                 }
             }
         });
@@ -234,8 +265,8 @@
             encryptedImg.onload = () => {
                 const histOriginal = getHistogramData(originalImg);
                 const histEncrypted = getHistogramData(encryptedImg);
-                renderHistogram('originalHistogram', histOriginal, 'rgba(54, 162, 235, 0.7)', 'Original');
-                renderHistogram('encryptedHistogram', histEncrypted, 'rgba(255, 99, 132, 0.7)', 'Encrypted');
+                renderHistogram('originalHistogram', histOriginal, 'Original');
+                renderHistogram('encryptedHistogram', histEncrypted, 'Encrypted');
             };
         }
     });
