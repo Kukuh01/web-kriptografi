@@ -218,10 +218,14 @@ class ImageEncryptionController extends Controller
             imagedestroy($decImgResource);
 
             $decryptedPathOnDisk = storage_path('app/public/' . $decryptedRelPath);
-
             $hashDecrypted = ImageEncryptionUtils::fileHash($decryptedPathOnDisk);
-
             $snippetDecrypted = ImageEncryptionUtils::binarySnippet($decryptedPathOnDisk);
+
+            $originalPath = storage_path('app/public/images/original/' . $metadata['original_filename']);
+            $encryptedPath = storage_path('app/public/' . $encryptedRelPath);
+            $decryptedPath = $decryptedPathOnDisk;
+
+            $analysis = ImageMetrics::analyzeThree($originalPath, $encryptedPath, $decryptedPath);
 
             return response()->json([
                 'success' => true,
@@ -229,6 +233,7 @@ class ImageEncryptionController extends Controller
                 'data' => [
                     'decrypted_filename' => $decryptedFilename,
                     'decrypted_path' => Storage::url($decryptedRelPath),
+                    'analysis' => $analysis,
                     'hash' => [
                         'decrypted' => $hashDecrypted
                     ],
@@ -319,118 +324,150 @@ class ImageEncryptionUtils
 class ImageMetrics
 {
     /**
-     * Fungsi helper untuk menghitung entropi dari satu channel histogram
+     * Hitung entropi dari histogram 256-bin
      */
     private static function calculateEntropy($histogram, $totalPixels)
     {
         $entropy = 0.0;
         if ($totalPixels == 0) return 0;
-        
-        for ($i = 0; $i < 256; $i++) {
-            if ($histogram[$i] == 0) continue;
-            $p = $histogram[$i] / $totalPixels;
+
+        foreach ($histogram as $count) {
+            if ($count == 0) continue;
+            $p = $count / $totalPixels;
             $entropy -= $p * log($p, 2);
         }
         return $entropy;
     }
 
+    /**
+     * Hitung semua metrik antara dua gambar
+     */
     public static function compareImages($imgA, $imgB)
     {
+        if (!$imgA || !$imgB) {
+            throw new \Exception("Gambar tidak valid.");
+        }
+
         $w = imagesx($imgA);
         $h = imagesy($imgA);
+
         if ($w !== imagesx($imgB) || $h !== imagesy($imgB)) {
-            throw new \Exception('Ukuran gambar berbeda');
+            throw new \Exception('Ukuran gambar berbeda.');
         }
 
         $mse = 0.0;
         $maxPixel = 255.0;
         $totalPixels = $w * $h;
-        $diffCount = 0; // for NPCR
+        $diffCount = 0;
         $uaciSum = 0.0;
+
         $histR = array_fill(0, 256, 0);
         $histG = array_fill(0, 256, 0);
         $histB = array_fill(0, 256, 0);
 
-        // For SSIM global: compute means and variances on grayscale
+        // Untuk SSIM global (grayscale)
         $sumA = 0.0; $sumB = 0.0;
         $sumA2 = 0.0; $sumB2 = 0.0; $sumAB = 0.0;
 
         for ($y = 0; $y < $h; $y++) {
             for ($x = 0; $x < $w; $x++) {
                 $rgbA = imagecolorat($imgA, $x, $y);
-                $rA = ($rgbA >> 16) & 0xFF; $gA = ($rgbA >> 8) & 0xFF; $bA = $rgbA & 0xFF;
+                $rA = ($rgbA >> 16) & 0xFF;
+                $gA = ($rgbA >> 8) & 0xFF;
+                $bA = $rgbA & 0xFF;
+
                 $rgbB = imagecolorat($imgB, $x, $y);
-                $rB = ($rgbB >> 16) & 0xFF; $gB = ($rgbB >> 8) & 0xFF; $bB = $rgbB & 0xFF;
+                $rB = ($rgbB >> 16) & 0xFF;
+                $gB = ($rgbB >> 8) & 0xFF;
+                $bB = $rgbB & 0xFF;
 
-                // compute per-channel MSE (average channels)
+                // MSE per channel
                 $dr = $rA - $rB; $dg = $gA - $gB; $db = $bA - $bB;
-                $mse += ($dr*$dr + $dg*$dg + $db*$db) / 3.0;
+                $mse += ($dr * $dr + $dg * $dg + $db * $db) / 3.0;
 
-                // NPCR: pixel considered changed if any channel differs
+                // NPCR: cek apakah pixel berubah
                 if ($rA !== $rB || $gA !== $gB || $bA !== $bB) $diffCount++;
 
-                // UACI: average of abs difference per channel normalized
-                $uaciSum += (abs($rA - $rB) + abs($gA - $gB) + abs($bA - $bB)) / 3.0;
+                // UACI: selisih absolut rata-rata
+                $uaciSum += (abs($dr) + abs($dg) + abs($db)) / 3.0;
 
+                // histogram untuk entropi
                 $histR[$rB]++;
                 $histG[$gB]++;
                 $histB[$bB]++;
 
-                // hist for A and B too
-                $grayA = intval(0.299*$rA + 0.587*$gA + 0.114*$bA);
-                $grayB = intval(0.299*$rB + 0.587*$gB + 0.114*$bB);
+                // konversi ke grayscale
+                $grayA = 0.299 * $rA + 0.587 * $gA + 0.114 * $bA;
+                $grayB = 0.299 * $rB + 0.587 * $gB + 0.114 * $bB;
 
-                // SSIM global (grayscale)
+                // SSIM (global)
                 $sumA += $grayA; $sumB += $grayB;
-                $sumA2 += $grayA*$grayA; $sumB2 += $grayB*$grayB;
+                $sumA2 += $grayA * $grayA;
+                $sumB2 += $grayB * $grayB;
                 $sumAB += $grayA * $grayB;
             }
         }
 
+        // Hitung nilai akhir
         $mse = $mse / $totalPixels;
-        $psnr = ($mse == 0) ? INF : 10 * log10( ($maxPixel*$maxPixel) / $mse );
+        $psnr = ($mse == 0) ? INF : 10 * log(($maxPixel * $maxPixel) / $mse, 10);
 
-        $npcr = ($diffCount / $totalPixels) * 100.0; // percent
+        $npcr = ($diffCount / $totalPixels) * 100.0;
+        $uaci = ($uaciSum / ($totalPixels * $maxPixel)) * 100.0;
 
-        $uaci = ($uaciSum / ($totalPixels * $maxPixel)) * 100.0; // in percent
-
-        // Entropy for encrypted image using hist
+        // Entropy
         $entropyR = self::calculateEntropy($histR, $totalPixels);
         $entropyG = self::calculateEntropy($histG, $totalPixels);
         $entropyB = self::calculateEntropy($histB, $totalPixels);
         $entropy = ($entropyR + $entropyG + $entropyB) / 3.0;
 
-        // SSIM global (single-window approximate)
+        // SSIM (approximation)
         $N = $totalPixels;
         $muA = $sumA / $N;
         $muB = $sumB / $N;
-        $sigmaA2 = ($sumA2 / $N) - ($muA*$muA);
-        $sigmaB2 = ($sumB2 / $N) - ($muB*$muB);
-        $sigmaAB = ($sumAB / $N) - ($muA*$muB);
-        // constants (K1,K2) typical values
-        $L = 255;
-        $K1 = 0.01; $K2 = 0.03;
-        $C1 = ($K1*$L) * ($K1*$L);
-        $C2 = ($K2*$L) * ($K2*$L);
-        $ssim = (($muA*$muB*2 + $C1) * (2*$sigmaAB + $C2)) / ((($muA*$muA + $muB*$muB + $C1) * ($sigmaA2 + $sigmaB2 + $C2)) + 1e-12);
+        $sigmaA2 = ($sumA2 / $N) - ($muA * $muA);
+        $sigmaB2 = ($sumB2 / $N) - ($muB * $muB);
+        $sigmaAB = ($sumAB / $N) - ($muA * $muB);
 
-        // NCC (Normalized Cross Correlation) on grayscale:
-        // correlation between flattened grayscale arrays
-        // compute numerator and denom
+        $L = 255;
+        $K1 = 0.01;
+        $K2 = 0.03;
+        $C1 = pow($K1 * $L, 2);
+        $C2 = pow($K2 * $L, 2);
+
+        $ssim = ((2 * $muA * $muB + $C1) * (2 * $sigmaAB + $C2)) /
+                (($muA * $muA + $muB * $muB + $C1) * ($sigmaA2 + $sigmaB2 + $C2) + 1e-12);
+
+        // NCC
         $num = $sumAB - $N * $muA * $muB;
-        $den = sqrt( ($sumA2 - $N * $muA*$muA) * ($sumB2 - $N * $muB*$muB) );
+        $den = sqrt(($sumA2 - $N * $muA * $muA) * ($sumB2 - $N * $muB * $muB));
         $ncc = ($den == 0) ? 0 : ($num / $den);
 
         return [
-            'MSE' => $mse,
-            'PSNR' => is_infinite($psnr) ? 'INF' : $psnr,
-            'NPCR_percent' => $npcr,
-            'UACI_percent' => $uaci,
-            'Entropy' => $entropy,
-            'SSIM_global' => $ssim,
-            'NCC' => $ncc
+            'MSE' => round($mse, 4),
+            'PSNR' => is_infinite($psnr) ? 'INF' : round($psnr, 4),
+            'NPCR_percent' => round($npcr, 4),
+            'UACI_percent' => round($uaci, 4),
+            'SSIM_global' => round($ssim, 6),
+            'NCC' => round($ncc, 6)
         ];
     }
 
-    
+    /**
+     * Bandingkan 3 gambar: original, encrypted, decrypted
+     */
+    public static function analyzeThree($originalPath, $encryptedPath, $decryptedPath)
+    {
+        $imgOriginal = imagecreatefromstring(file_get_contents($originalPath));
+        $imgEncrypted = imagecreatefromstring(file_get_contents($encryptedPath));
+        $imgDecrypted = imagecreatefromstring(file_get_contents($decryptedPath));
+
+        $res1 = self::compareImages($imgOriginal, $imgEncrypted);
+        $res2 = self::compareImages($imgOriginal, $imgDecrypted);
+
+        return [
+            'Original_vs_Encrypted' => $res1,
+            'Original_vs_Decrypted' => $res2
+        ];
+    }
 }

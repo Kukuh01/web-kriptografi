@@ -86,16 +86,17 @@
 
         {{-- Metrics Section --}}
         <div id="metrics-container" class="mt-4 hidden">
-        <h2 class="text-lg font-semibold mb-2">🔍 Hasil Analisis Kualitas Citra</h2>
-        <table class="table-auto border-collapse border border-gray-300 w-full text-sm">
-            <thead class="bg-gray-100">
-            <tr>
-                <th class="border border-gray-300 px-3 py-2">Metrik</th>
-                <th class="border border-gray-300 px-3 py-2">Nilai</th>
-            </tr>
-            </thead>
-            <tbody id="metrics-table"></tbody>
-        </table>
+            <h2 class="text-lg font-semibold mb-2">🔍 Hasil Analisis Kualitas Citra</h2>
+            <table class="table-auto border-collapse border border-gray-300 w-full text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="border border-gray-300 px-3 py-2">Metrik</th>
+                        <th class="border border-gray-300 px-3 py-2 text-center">Original vs Enkripsi</th>
+                        <th class="border border-gray-300 px-3 py-2 text-center">Original vs Dekripsi</th>
+                    </tr>
+                </thead>
+                <tbody id="metrics-table"></tbody>
+            </table>
         </div>
 
         <!-- Histogram Section -->
@@ -109,6 +110,10 @@
                 <div>
                     <h4 class="text-center text-gray-600 mb-2">Histogram Gambar Terenkripsi</h4>
                     <canvas id="encryptedHistogram"></canvas>
+                </div>
+                <div>
+                    <h4 class="text-center text-gray-600 mb-2">Histogram Gambar Dekripsi</h4>
+                    <canvas id="decryptedHistogram"></canvas>
                 </div>
             </div>
         </div>
@@ -229,7 +234,7 @@
         });
     }
 
-    //Encrypt Handler
+    // ENCRYPT HANDLER
     document.getElementById('btn-encrypt').addEventListener('click', async () => {
         const res = await fetch('/encrypt', {
             method: 'POST',
@@ -245,33 +250,22 @@
             document.getElementById('btn-decrypt').disabled = false;
             document.getElementById('download-encrypted').disabled = false;
 
-            //Menampilkan tabel metrik
-            const metrics = result.data.metrics;
-            const metricsTable = document.getElementById('metrics-table');
-            metricsTable.innerHTML = '';
-            for (const [key, value] of Object.entries(metrics)) {
-                metricsTable.innerHTML += `
-                    <tr>
-                        <td class="border border-gray-300 px-3 py-2 font-medium">${key}</td>
-                        <td class="border border-gray-300 px-3 py-2">${Number.isFinite(value) ? value.toFixed(4) : value}</td>
-                    </tr>
-                `;
-            }
-            document.getElementById('metrics-container').classList.remove('hidden');
+            // Simpan hasil metrics original vs encrypted
+            window.metricsOriginalEncrypted = result.data.metrics;
 
-            //Menampilkan histogram
+            // Tampilkan tabel hanya jika hasil decrypt juga sudah ada
+            if (window.metricsOriginalDecrypted) renderMetricsTable();
+
+            // Histogram
             const originalImg = document.querySelector('#original-container img');
             const encryptedImg = document.getElementById('encryptedImage');
             encryptedImg.onload = () => {
-                const histOriginal = getHistogramData(originalImg);
-                const histEncrypted = getHistogramData(encryptedImg);
-                renderHistogram('originalHistogram', histOriginal, 'Original');
-                renderHistogram('encryptedHistogram', histEncrypted, 'Encrypted');
+                renderAllHistograms();
             };
         }
     });
 
-    //Decrypt Handler
+    // DECRYPT HANDLER
     document.getElementById('btn-decrypt').addEventListener('click', async () => {
         const res = await fetch('/decrypt', {
             method: 'POST',
@@ -286,10 +280,67 @@
                 `<img src="${result.data.decrypted_path}" class="max-w-full max-h-full object-contain">`;
             document.getElementById('download-decrypted').disabled = false;
 
-            addHashRow('Encrypted (Before Decrypt)', result.data.hash.encrypted, result.data.binary_snippet.encrypted);
-            addHashRow('Decrypted', result.data.hash.decrypted, result.data.binary_snippet.decrypted);
+            // Simpan hasil metrics original vs decrypted
+             window.metricsOriginalDecrypted = result.data.analysis?.Original_vs_Decrypted || {};
+             window.metricsOriginalEncrypted = result.data.analysis?.Original_vs_Encrypted || window.metricsOriginalEncrypted || {};
+
+            // Render tabel jika data encrypt juga sudah ada
+            if (window.metricsOriginalEncrypted) renderMetricsTable();
+
+            const decryptedImg = document.querySelector('#decrypted-container img');
+            decryptedImg.onload = () => {
+                renderAllHistograms();
+            };
         }
     });
+
+    function renderMetricsTable() {
+        const metricsEnc = window.metricsOriginalEncrypted || {};
+        const metricsDec = window.metricsOriginalDecrypted || {};
+        const allKeys = new Set([...Object.keys(metricsEnc), ...Object.keys(metricsDec)]);
+        const metricsTable = document.getElementById('metrics-table');
+        metricsTable.innerHTML = '';
+
+        allKeys.forEach(key => {
+            const valEnc = metricsEnc[key];
+            const valDec = metricsDec[key];
+            metricsTable.innerHTML += `
+                <tr>
+                    <td class="border border-gray-300 px-3 py-2 font-medium">${key}</td>
+                    <td class="border border-gray-300 px-3 py-2 text-center">
+                        ${valEnc !== undefined ? (Number.isFinite(valEnc) ? valEnc.toFixed(4) : valEnc) : '-'}
+                    </td>
+                    <td class="border border-gray-300 px-3 py-2 text-center">
+                        ${valDec !== undefined ? (Number.isFinite(valDec) ? valDec.toFixed(4) : valDec) : '-'}
+                    </td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('metrics-container').classList.remove('hidden');
+    }
+
+    function renderAllHistograms() {
+        const originalImg = document.querySelector('#original-container img');
+        const encryptedImg = document.querySelector('#encrypted-container img');
+        const decryptedImg = document.querySelector('#decrypted-container img');
+
+        if (!originalImg) return; // original wajib ada
+
+        const histOriginal = getHistogramData(originalImg);
+        renderHistogram('originalHistogram', histOriginal, 'Original');
+
+        if (encryptedImg) {
+            const histEncrypted = getHistogramData(encryptedImg);
+            renderHistogram('encryptedHistogram', histEncrypted, 'Encrypted');
+        }
+
+        if (decryptedImg) {
+            const histDecrypted = getHistogramData(decryptedImg);
+            renderHistogram('decryptedHistogram', histDecrypted, 'Decrypted');
+        }
+    }
+
 
     //Download Handlers
     document.getElementById('download-original').onclick = () => {
